@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::process::Command;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct AudioInfo {
     pub filename: String,
     pub format: String,
@@ -14,7 +14,7 @@ pub struct AudioInfo {
     pub file_size: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ConvertOptions {
     pub input_path: String,
     pub output_path: String,
@@ -30,8 +30,9 @@ pub struct ConvertOptions {
     pub fade_out: Option<f32>,
 }
 
-#[tauri::command]
-fn check_ffmpeg() -> Result<String, String> {
+// ---- Core logic (shared between Tauri and web server) ----
+
+pub fn ffmpeg_check() -> Result<String, String> {
     let output = Command::new("ffmpeg")
         .arg("-version")
         .output()
@@ -42,15 +43,14 @@ fn check_ffmpeg() -> Result<String, String> {
         .map(|s| s.lines().next().unwrap_or("FFmpeg installed").to_string())
 }
 
-#[tauri::command]
-fn probe_audio(path: String) -> Result<AudioInfo, String> {
+pub fn ffmpeg_probe(path: &str) -> Result<AudioInfo, String> {
     let output = Command::new("ffprobe")
         .args([
             "-v", "quiet",
             "-print_format", "json",
             "-show_format",
             "-show_streams",
-            &path,
+            path,
         ])
         .output()
         .map_err(|e| format!("ffprobe failed: {}", e))?;
@@ -87,11 +87,11 @@ fn probe_audio(path: String) -> Result<AudioInfo, String> {
         .unwrap_or(0);
 
     let file_size = if file_size_bytes > 1_048_576 {
-        format!("{:.1} MB", file_size_bytes as f64 / 1_048_576.0)
+        std::format!("{:.1} MB", file_size_bytes as f64 / 1_048_576.0)
     } else if file_size_bytes > 1024 {
-        format!("{:.1} KB", file_size_bytes as f64 / 1024.0)
+        std::format!("{:.1} KB", file_size_bytes as f64 / 1024.0)
     } else {
-        format!("{} B", file_size_bytes)
+        std::format!("{} B", file_size_bytes)
     };
 
     let duration_secs: f64 = format["duration"]
@@ -100,7 +100,7 @@ fn probe_audio(path: String) -> Result<AudioInfo, String> {
         .unwrap_or(0.0);
     let mins = (duration_secs / 60.0).floor() as u32;
     let secs = (duration_secs % 60.0).floor() as u32;
-    let duration = format!("{}:{:02}", mins, secs);
+    let duration = std::format!("{}:{:02}", mins, secs);
 
     let sample_rate = stream["sample_rate"]
         .as_str()
@@ -111,13 +111,13 @@ fn probe_audio(path: String) -> Result<AudioInfo, String> {
     let channels = match channels_num {
         1 => "Mono".to_string(),
         2 => "Stereo".to_string(),
-        n => format!("{} channels", n),
+        n => std::format!("{} channels", n),
     };
 
     let bit_depth = stream["bits_per_raw_sample"]
         .as_str()
         .or_else(|| stream["bits_per_sample"].as_str())
-        .map(|s| format!("{}-bit", s))
+        .map(|s| std::format!("{}-bit", s))
         .unwrap_or_else(|| "N/A".to_string());
 
     let codec = stream["codec_long_name"]
@@ -129,7 +129,7 @@ fn probe_audio(path: String) -> Result<AudioInfo, String> {
     let bitrate = format["bit_rate"]
         .as_str()
         .and_then(|s| s.parse::<u64>().ok())
-        .map(|b| format!("{} kbps", b / 1000))
+        .map(|b| std::format!("{} kbps", b / 1000))
         .unwrap_or_else(|| "N/A".to_string());
 
     Ok(AudioInfo {
@@ -148,8 +148,7 @@ fn probe_audio(path: String) -> Result<AudioInfo, String> {
     })
 }
 
-#[tauri::command]
-fn convert_audio(options: ConvertOptions) -> Result<String, String> {
+pub fn ffmpeg_convert(options: &ConvertOptions) -> Result<String, String> {
     let mut args: Vec<String> = vec![
         "-y".to_string(),
         "-i".to_string(),
@@ -161,7 +160,7 @@ fn convert_audio(options: ConvertOptions) -> Result<String, String> {
 
     if let Some(vol) = options.volume {
         if (vol - 1.0).abs() > 0.01 {
-            filters.push(format!("volume={:.2}", vol));
+            filters.push(std::format!("volume={:.2}", vol));
         }
     }
 
@@ -175,13 +174,13 @@ fn convert_audio(options: ConvertOptions) -> Result<String, String> {
 
     if let Some(fade_in) = options.fade_in {
         if fade_in > 0.0 {
-            filters.push(format!("afade=t=in:st=0:d={:.1}", fade_in));
+            filters.push(std::format!("afade=t=in:st=0:d={:.1}", fade_in));
         }
     }
 
     if let Some(fade_out) = options.fade_out {
         if fade_out > 0.0 {
-            filters.push(format!("afade=t=out:st=0:d={:.1}", fade_out));
+            filters.push(std::format!("afade=t=out:st=0:d={:.1}", fade_out));
         }
     }
 
@@ -190,19 +189,16 @@ fn convert_audio(options: ConvertOptions) -> Result<String, String> {
         args.push(filters.join(","));
     }
 
-    // Sample rate
     if let Some(sr) = options.sample_rate {
         args.push("-ar".to_string());
         args.push(sr.to_string());
     }
 
-    // Channels
     if let Some(ch) = options.channels {
         args.push("-ac".to_string());
         args.push(ch.to_string());
     }
 
-    // Format-specific options
     match options.format.as_str() {
         "wav" => {
             if let Some(bd) = options.bit_depth {
@@ -270,25 +266,48 @@ fn convert_audio(options: ConvertOptions) -> Result<String, String> {
     let output = Command::new("ffmpeg")
         .args(&args)
         .output()
-        .map_err(|e| format!("FFmpeg execution failed: {}", e))?;
+        .map_err(|e| std::format!("FFmpeg execution failed: {}", e))?;
 
     if output.status.success() {
-        Ok(options.output_path)
+        Ok(options.output_path.clone())
     } else {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Conversion failed: {}", stderr))
+        Err(std::format!("Conversion failed: {}", stderr))
     }
 }
 
+// ---- Tauri commands (thin wrappers, only compiled for desktop) ----
+
+#[cfg(feature = "desktop")]
+mod tauri_commands {
+    use super::*;
+
+    #[tauri::command]
+    pub fn check_ffmpeg() -> Result<String, String> {
+        ffmpeg_check()
+    }
+
+    #[tauri::command]
+    pub fn probe_audio(path: String) -> Result<AudioInfo, String> {
+        ffmpeg_probe(&path)
+    }
+
+    #[tauri::command]
+    pub fn convert_audio(options: ConvertOptions) -> Result<String, String> {
+        ffmpeg_convert(&options)
+    }
+}
+
+#[cfg(feature = "desktop")]
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
-            check_ffmpeg,
-            probe_audio,
-            convert_audio,
+            tauri_commands::check_ffmpeg,
+            tauri_commands::probe_audio,
+            tauri_commands::convert_audio,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
