@@ -17,7 +17,7 @@ tauri-plugin-dialog = { version = "2", optional = true }
 tauri-plugin-shell = { version = "2", optional = true }
 
 # Web server
-axum = { version = "0.8", optional = true }
+axum = { version = "0.8", features = ["multipart"], optional = true }
 tokio = { version = "1", features = ["full"], optional = true }
 tower-http = { version = "0.6", features = ["cors", "fs"], optional = true }
 uuid = { version = "1", features = ["v4"], optional = true }
