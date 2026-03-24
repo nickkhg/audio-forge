@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Forge</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="noise-overlay"></div>
+
+  <div class="app">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <rect x="2" y="10" width="3" height="8" rx="1.5" fill="currentColor" opacity="0.5"/>
+            <rect x="7" y="6" width="3" height="16" rx="1.5" fill="currentColor" opacity="0.7"/>
+            <rect x="12" y="3" width="3" height="22" rx="1.5" fill="currentColor"/>
+            <rect x="17" y="6" width="3" height="16" rx="1.5" fill="currentColor" opacity="0.7"/>
+            <rect x="22" y="10" width="3" height="8" rx="1.5" fill="currentColor" opacity="0.5"/>
+          </svg>
+        </div>
+        <h1>Audio Forge</h1>
+      </div>
+      <div class="ffmpeg-status" id="ffmpegStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Checking FFmpeg…</span>
+      </div>
+    </header>
+
+    <!-- Main content -->
+    <main class="main">
+      <!-- Drop zone / file info -->
+      <section class="file-section">
+        <div class="drop-zone" id="dropZone">
+          <div class="drop-zone-content" id="dropContent">
+            <div class="drop-icon">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <path d="M24 4L24 32M24 4L16 12M24 4L32 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M8 28V38C8 40.2091 9.79086 42 12 42H36C38.2091 42 40 40.2091 40 38V28" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <p class="drop-title">Drop audio file here</p>
+            <p class="drop-subtitle">or click to browse</p>
+            <p class="drop-formats">WAV, MP3, FLAC, OGG, AAC, M4A, OPUS, WMA, AIFF</p>
+          </div>
+          <div class="file-info hidden" id="fileInfo">
+            <div class="file-info-header">
+              <div class="file-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                  <path d="M9 18V5l12-2v13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                  <circle cx="6" cy="18" r="3" stroke="currentColor" stroke-width="1.5"/>
+                  <circle cx="18" cy="16" r="3" stroke="currentColor" stroke-width="1.5"/>
+                </svg>
+              </div>
+              <div class="file-name-wrap">
+                <h3 class="file-name" id="fileName">—</h3>
+                <span class="file-format" id="fileFormat">—</span>
+              </div>
+              <button class="btn-clear" id="clearFile" title="Remove file">
+                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                  <path d="M4 4L14 14M14 4L4 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+                </svg>
+              </button>
+            </div>
+            <div class="file-meta" id="fileMeta">
+              <div class="meta-chip"><span class="meta-label">Duration</span><span class="meta-value" id="metaDuration">—</span></div>
+              <div class="meta-chip"><span class="meta-label">Sample Rate</span><span class="meta-value" id="metaSampleRate">—</span></div>
+              <div class="meta-chip"><span class="meta-label">Channels</span><span class="meta-value" id="metaChannels">—</span></div>
+              <div class="meta-chip"><span class="meta-label">Bit Depth</span><span class="meta-value" id="metaBitDepth">—</span></div>
+              <div class="meta-chip"><span class="meta-label">Bitrate</span><span class="meta-value" id="metaBitrate">—</span></div>
+              <div class="meta-chip"><span class="meta-label">Size</span><span class="meta-value" id="metaSize">—</span></div>
+            </div>
+          </div>
+          <input type="file" id="fileInput" accept="audio/*,.wav,.mp3,.flac,.ogg,.aac,.m4a,.opus,.wma,.aiff,.aif" hidden />
+        </div>
+      </section>
+
+      <!-- Quick presets -->
+      <section class="presets-section" id="presetsSection">
+        <h2 class="section-label">Quick Presets</h2>
+        <div class="presets-row">
+          <button class="preset-btn active" data-preset="wav-mono">
+            <span class="preset-name">WAV Mono</span>
+            <span class="preset-desc">16-bit · 44.1kHz · 1ch</span>
+          </button>
+          <button class="preset-btn" data-preset="wav-stereo">
+            <span class="preset-name">WAV Stereo</span>
+            <span class="preset-desc">16-bit · 44.1kHz · 2ch</span>
+          </button>
+          <button class="preset-btn" data-preset="mp3-320">
+            <span class="preset-name">MP3 HQ</span>
+            <span class="preset-desc">320 kbps · Stereo</span>
+          </button>
+          <button class="preset-btn" data-preset="flac">
+            <span class="preset-name">FLAC</span>
+            <span class="preset-desc">Lossless · Original</span>
+          </button>
+          <button class="preset-btn" data-preset="custom">
+            <span class="preset-name">Custom</span>
+            <span class="preset-desc">Configure below</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Options panel -->
+      <section class="options-section" id="optionsSection">
+        <div class="options-toggle" id="optionsToggle">
+          <h2 class="section-label">Options</h2>
+          <svg class="chevron" width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4 6L8 10L12 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="options-grid" id="optionsGrid">
+          <!-- Format -->
+          <div class="option-group">
+            <label class="option-label">Format</label>
+            <div class="select-wrap">
+              <select id="optFormat">
+                <option value="wav">WAV</option>
+                <option value="mp3">MP3</option>
+                <option value="flac">FLAC</option>
+                <option value="ogg">OGG Vorbis</option>
+                <option value="m4a">M4A (AAC)</option>
+                <option value="opus">Opus</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Channels -->
+          <div class="option-group">
+            <label class="option-label">Channels</label>
+            <div class="select-wrap">
+              <select id="optChannels">
+                <option value="">Keep Original</option>
+                <option value="1">Mono</option>
+                <option value="2">Stereo</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Sample Rate -->
+          <div class="option-group">
+            <label class="option-label">Sample Rate</label>
+            <div class="select-wrap">
+              <select id="optSampleRate">
+                <option value="">Keep Original</option>
+                <option value="8000">8,000 Hz</option>
+                <option value="16000">16,000 Hz</option>
+                <option value="22050">22,050 Hz</option>
+                <option value="44100">44,100 Hz</option>
+                <option value="48000">48,000 Hz</option>
+                <option value="96000">96,000 Hz</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Bit Depth (for WAV/FLAC) -->
+          <div class="option-group" id="bitDepthGroup">
+            <label class="option-label">Bit Depth</label>
+            <div class="select-wrap">
+              <select id="optBitDepth">
+                <option value="">Default</option>
+                <option value="16">16-bit</option>
+                <option value="24">24-bit</option>
+                <option value="32">32-bit</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Bitrate (for lossy) -->
+          <div class="option-group hidden" id="bitrateGroup">
+            <label class="option-label">Bitrate</label>
+            <div class="select-wrap">
+              <select id="optBitrate">
+                <option value="">Default</option>
+                <option value="64k">64 kbps</option>
+                <option value="96k">96 kbps</option>
+                <option value="128k">128 kbps</option>
+                <option value="192k">192 kbps</option>
+                <option value="256k">256 kbps</option>
+                <option value="320k">320 kbps</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Volume -->
+          <div class="option-group">
+            <label class="option-label">Volume <span class="volume-display" id="volumeDisplay">100%</span></label>
+            <input type="range" id="optVolume" min="0" max="200" value="100" class="range-input" />
+          </div>
+
+          <!-- Toggles row -->
+          <div class="option-group option-group-wide">
+            <div class="toggles-row">
+              <label class="toggle-label">
+                <input type="checkbox" id="optNormalize" />
+                <span class="toggle-switch"></span>
+                <span>Normalize loudness</span>
+              </label>
+              <label class="toggle-label">
+                <input type="checkbox" id="optTrimSilence" />
+                <span class="toggle-switch"></span>
+                <span>Trim silence</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Fade -->
+          <div class="option-group">
+            <label class="option-label">Fade In (seconds)</label>
+            <input type="number" id="optFadeIn" min="0" max="30" step="0.1" value="0" class="number-input" />
+          </div>
+          <div class="option-group">
+            <label class="option-label">Fade Out (seconds)</label>
+            <input type="number" id="optFadeOut" min="0" max="30" step="0.1" value="0" class="number-input" />
+          </div>
+        </div>
+      </section>
+
+      <!-- Convert button -->
+      <section class="convert-section" id="convertSection">
+        <button class="convert-btn" id="convertBtn" disabled>
+          <span class="convert-btn-text">Convert</span>
+          <span class="convert-btn-arrow">
+            <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+              <path d="M4 10H16M16 10L11 5M16 10L11 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </span>
+        </button>
+        <div class="progress-wrap hidden" id="progressWrap">
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <p class="progress-text" id="progressText">Converting…</p>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

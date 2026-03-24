@@ -1,0 +1,17 @@
+{
+  "identifier": "default",
+  "description": "Default capabilities for Audio Forge",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-set-cursor-grab",
+    "core:webview:allow-set-webview-focus",
+    "core:webview:default",
+    "dialog:default",
+    "dialog:allow-open",
+    "dialog:allow-save",
+    "shell:default",
+    "shell:allow-execute",
+    "shell:allow-spawn"
+  ]
+}
