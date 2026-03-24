@@ -6,18 +6,20 @@ WORKDIR /build
 # Install build deps
 RUN apt-get update && apt-get install -y --no-install-recommends pkg-config && rm -rf /var/lib/apt/lists/*
 
-# Copy manifests first for layer caching
-COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./
-RUN mkdir src && echo 'pub fn ffmpeg_check() -> Result<String, String> { Ok(String::new()) } pub fn ffmpeg_probe(_: &str) -> Result<(), String> { Ok(()) } pub fn ffmpeg_convert(_: &()) -> Result<String, String> { Ok(String::new()) }' > src/lib.rs && \
+# Copy manifest only (no lock file — let cargo resolve for web feature only)
+COPY src-tauri/Cargo.toml ./
+
+# Dep caching layer with dummy source
+RUN mkdir src && \
+    echo 'pub fn ffmpeg_check() -> Result<String, String> { Ok(String::new()) } pub fn ffmpeg_probe(_: &str) -> Result<(), String> { Ok(()) } pub fn ffmpeg_convert(_: &()) -> Result<String, String> { Ok(String::new()) }' > src/lib.rs && \
     mkdir src/bin && echo 'fn main() {}' > src/bin/web.rs && \
-    cargo build --release --features web --bin audio-forge-web 2>/dev/null || true && \
+    cargo build --release --no-default-features --features web --bin audio-forge-web 2>/dev/null || true && \
     rm -rf src
 
 # Copy real source
 COPY src-tauri/src ./src
-COPY src-tauri/Cargo.toml src-tauri/Cargo.lock ./
 
-RUN cargo build --release --features web --bin audio-forge-web
+RUN cargo build --release --no-default-features --features web --bin audio-forge-web
 
 # ---- Runtime stage ----
 FROM debian:bookworm-slim
