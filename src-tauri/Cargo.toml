@@ -2,6 +2,7 @@
 name = "audio-forge"
 version = "1.0.0"
 edition = "2021"
+default-run = "audio-forge"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
